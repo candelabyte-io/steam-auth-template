@@ -42,22 +42,18 @@ public class AuthController : ControllerBase
         if (principal?.Identity == null || !principal.Identity.IsAuthenticated)
             return Unauthorized();
 
-        var steamURL = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        var steamProfileURL = principal.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if(string.IsNullOrEmpty(steamURL))
+        if(string.IsNullOrEmpty(steamProfileURL))
             return Unauthorized(new { error = "Steam authentication failed: No Steam ID found" });
 
         string steamId = null;
-        if (!string.IsNullOrEmpty(steamURL))
-        {
-            var match = Regex.Match(steamURL, @"\d{17,20}$");
+          var match = Regex.Match(steamProfileURL, @"\d{17,20}$");
             if (match.Success)
                 steamId = match.Value;
-        }
 
         if (string.IsNullOrEmpty(steamId))
             return Unauthorized(new { error = "Steam authentication failed: Invalid Steam ID format" });
-
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]!);
@@ -84,12 +80,10 @@ public class AuthController : ControllerBase
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public IActionResult GetMe()
     {
-
         if (User?.Identity == null || !User.Identity.IsAuthenticated)
             return Unauthorized(new { error = "Not authenticated" });
 
         var steamId = User.FindFirstValue("steamid");
-
 
         if (string.IsNullOrEmpty(steamId))
             return Unauthorized(new { error = "Steam ID not found" });
