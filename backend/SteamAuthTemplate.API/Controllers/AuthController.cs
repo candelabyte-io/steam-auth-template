@@ -36,49 +36,29 @@ public class AuthController : ControllerBase
     [HttpGet("callback")]
     public async Task<IActionResult> Callback()
     {
-        // Try to get the authentication result for the Steam scheme first.
-        // This ensures we read the claims issued by the Steam handler even if the cookie
-        // authentication hasn't been populated to HttpContext.User yet.
         var authResult = await HttpContext.AuthenticateAsync("Steam");
         var principal = authResult?.Principal ?? User;
 
         if (principal?.Identity == null || !principal.Identity.IsAuthenticated)
             return Unauthorized();
 
-        // Try multiple claim names to find the Steam ID (some handlers use NameIdentifier)
-        var steamId = principal.FindFirstValue(ClaimTypes.NameIdentifier)
-                      ?? principal.FindFirstValue("steamid")
-                      ?? principal.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
-                      ?? principal.Claims.FirstOrDefault(c => c.Type.ToLower().Contains("steam"))?.Value;
+        var steamURL = principal.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        // Use console logging for knowing who has the steam id
-        Console.WriteLine("1", principal.FindFirstValue(ClaimTypes.NameIdentifier));
-        Console.WriteLine("2", principal.FindFirstValue("steamid"));
-        Console.WriteLine("3", principal.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"));
-        Console.WriteLine("4", principal.Claims.FirstOrDefault(c => c.Type.ToLower().Contains("steam"))?.Value);
-        Console.WriteLine("Extracted Steam ID: " + steamId);
+        if(string.IsNullOrEmpty(steamURL))
+            return Unauthorized(new { error = "Steam authentication failed: No Steam ID found" });
 
-
-
-        // Normalize steam id: some OpenID responses return the full profile URL, extract numeric id
-        if (!string.IsNullOrEmpty(steamId))
+        string steamId = null;
+        if (!string.IsNullOrEmpty(steamURL))
         {
-            var match = Regex.Match(steamId, @"\d{17,20}$");
+            var match = Regex.Match(steamURL, @"\d{17,20}$");
             if (match.Success)
                 steamId = match.Value;
         }
 
-        // Log all claims if steamId is not found for easier debugging
         if (string.IsNullOrEmpty(steamId))
-        {
-            var claimsDebug = principal.Claims.Select(c => new { c.Type, c.Value });
-            Console.WriteLine("Steam ID not found in claims. Claims: " + System.Text.Json.JsonSerializer.Serialize(claimsDebug));
-            return Unauthorized(new { error = "Steam ID not found in authentication result" });
-        }
+            return Unauthorized(new { error = "Steam authentication failed: Invalid Steam ID format" });
 
-        Console.WriteLine("Authenticated user with Steam ID: " + steamId);
 
-        // Issue JWT for Angular
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]!);
 
@@ -95,7 +75,7 @@ public class AuthController : ControllerBase
 
         var jwt = tokenHandler.WriteToken(token);
         var encoded = Uri.EscapeDataString(jwt);
-        var frontend = _config["Frontend:Url"] ?? "http://localhost:4200";
+        var frontend = _config["Frontend:Url"] ?? "http://localhost:4200"; // Default URL of Angular app for local dev
 
         return Redirect($"{frontend.TrimEnd('/')}/auth/callback?token={encoded}");
     }
@@ -104,34 +84,16 @@ public class AuthController : ControllerBase
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public IActionResult GetMe()
     {
-        Console.WriteLine("GetMe called");
 
         if (User?.Identity == null || !User.Identity.IsAuthenticated)
             return Unauthorized(new { error = "Not authenticated" });
 
-        // Attempt to read steam id from JWT claims
-        var steamId = User.FindFirstValue("steamid")
-                      ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
-                      ?? User.Claims.FirstOrDefault(c => c.Type.ToLower().Contains("steam"))?.Value;
+        var steamId = User.FindFirstValue("steamid");
 
-        // Normalize steam id in case it contains the OpenID URL
-        if (!string.IsNullOrEmpty(steamId))
-        {
-            var match = Regex.Match(steamId, @"\d{17,20}$");
-            if (match.Success)
-                steamId = match.Value;
-        }
 
         if (string.IsNullOrEmpty(steamId))
             return Unauthorized(new { error = "Steam ID not found" });
 
-        // Print User as JSON to the console using System.Text.Json
-        var userInfo = new
-        {
-            IsAuthenticated = User.Identity.IsAuthenticated,
-            Claims = User.Claims.Select(c => new { c.Type, c.Value })
-        };
-        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(userInfo));
 
         return Ok(new { steamId });
     }
