@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
@@ -50,5 +51,16 @@ public class AuthController : ControllerBase
         });
 
         return Redirect($"http://localhost:4200/auth/callback?token={tokenHandler.WriteToken(token)}");
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult GetSteamId()
+    {
+        var steamId = User.FindFirstValue("steamid");
+        if (string.IsNullOrEmpty(steamId))
+            return Unauthorized();
+
+        return Ok(new { steamId });
     }
 }
