@@ -1,4 +1,4 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, signal } from "@angular/core";
 import { AuthService } from "../services/auth.service";
 
 @Component({
@@ -12,7 +12,7 @@ import { AuthService } from "../services/auth.service";
         </div>
         <div class="mb-6">
           <p class="text-sm text-gray-500 mb-1">Your Steam ID:</p>
-          <p class="text-lg font-mono bg-gray-100 rounded px-3 py-2">{{ steamId || 'Loading...' }}</p>
+          <p class="text-lg font-mono bg-gray-100 rounded px-3 py-2">{{ steamId() || 'Loading...' }}</p>
         </div>
         <button
           (click)="logout()"
@@ -22,25 +22,20 @@ import { AuthService } from "../services/auth.service";
       </div>
     </div>
     `})
-export class WelcomeComponent implements OnInit {
-    steamId: string | null = null;
+export class WelcomeComponent  implements OnInit {
+  steamId = signal<string | null>(null);
 
-    constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-    ngOnInit() {
-        this.authService.getSteamIdFromServer().subscribe({
-            next: (data) => {
-                this.steamId = data.steamId;
-            },
-            error: (err) => {
-                console.error('Error fetching Steam ID:', err);
-                this.steamId = 'Error loading Steam ID';
-            }
-        });
-    }
+  ngOnInit() {
+    this.authService.getSteamId().subscribe({
+      next: (data) => this.steamId.set(data.steamId),
+      error: () => this.steamId.set('Error loading Steam ID')
+    });
+  }
 
-    logout() {
-        this.authService.logout();
-        window.location.reload();
-    }
+  logout() {
+    this.authService.logout();
+    window.location.reload();
+  }
 }
