@@ -30,7 +30,7 @@ Notes:
 - The backend returns `steamid` as a claim and in the `/me` response.
 
 ## Configuration
-- Backend: set the `Jwt:Key` value in `backend/SteamAuthTemplate.API/appsettings.json` (or environment variables) to a strong secret used to sign tokens.
+- Backend: set the `Jwt:Key` value in `backend/SteamAuthTemplate.API/appsettings.json` (or environment variables) to a strong secret used to sign tokens. IMPORTANT: Change this key from any template or default value before deploying — using the sample/default key checked into the repository is insecure and MUST be replaced.
 - Backend: set `Frontend:Url` to the running frontend base URL (e.g. `http://localhost:4200`) so the backend can redirect after successful login.
 - Ensure the Steam OpenID authentication is configured in `Program.cs` (Steam/OpenID options may require a return URL matching the app registration).
 
@@ -77,7 +77,7 @@ curl -H "Authorization: Bearer <jwt>" http://localhost:5000/auth/steam/me
 - If Steam authentication fails: verify the Steam OpenID setup in `Program.cs` and ensure return URLs match registered/allowed URLs.
 
 ## Security notes
-- Do NOT store long-lived secrets in source control. Use environment variables or a secrets store for `Jwt:Key`.
+- Do NOT store long-lived secrets in source control. Use environment variables or a secrets store for `Jwt:Key`. It is mandatory to change the `Jwt:Key` from any example/default value in `appsettings.json` or `appsettings.Development.json` before running outside of a local development environment — failing to do so makes the system insecure.
 - For production, enable HTTPS and set appropriate cookie and token security settings.
 
 ## Quick summary of commands
@@ -91,8 +91,6 @@ cd client
 npm install
 npm run start   # or npx ng serve --open
 ```
-
-If you run into any issues, feel free to create an issue on the project's GitHub repository describing the problem and steps to reproduce it.
 
 ## License
 This project is licensed under the MIT License — see the accompanying LICENSE file for details. This repository is MIT licensed on GitHub.
