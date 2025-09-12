@@ -30,7 +30,12 @@ builder.Services
         options.DefaultChallengeScheme = SteamAuthenticationDefaults.AuthenticationScheme;
     })
     .AddCookie()
-    .AddSteam()
+    .AddSteam(
+        options =>
+        {
+            options.ApplicationKey = builder.Configuration["Steam:ApiKey"] ?? string.Empty; // Your Steam Web API Key here is optional but recommended for some scenarios
+        }
+    )
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
         // Validate JWT tokens issued by the Callback endpoint
@@ -45,18 +50,6 @@ builder.Services
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2)
         };
-
-        // If you need to accept tokens via query string for specific scenarios, enable below.
-        // options.Events = new JwtBearerEvents
-        // {
-        //     OnMessageReceived = context =>
-        //     {
-        //         var accessToken = context.Request.Query["access_token"];
-        //         if (!string.IsNullOrEmpty(accessToken))
-        //             context.Token = accessToken;
-        //         return Task.CompletedTask;
-        //     }
-        // };
     });
 
 builder.Services.AddAuthorization();
